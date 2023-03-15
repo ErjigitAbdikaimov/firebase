@@ -1,20 +1,31 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
-import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+
 import 'package:jarnama_app/components/custom_text_field.dart';
+import 'package:jarnama_app/components/image_container.dart';
+import 'package:jarnama_app/model/produkt_model.dart';
+import 'package:jarnama_app/services/date_time_service.dart';
+import 'package:jarnama_app/services/loading_service.dart';
+import 'package:jarnama_app/services/storage_service.dart';
+import 'package:jarnama_app/services/store_service.dart';
 
 class AppProductPage extends StatelessWidget {
   const AppProductPage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final _title = TextEditingController();
-    final _desc = TextEditingController();
-    final _datetime = TextEditingController();
-    final _phone = TextEditingController();
-    final _userName = TextEditingController();
-    final _adress = TextEditingController();
-    final _price = TextEditingController();
+    final title = TextEditingController();
+    final desc = TextEditingController();
+    final dateTime = TextEditingController();
+    final phone = TextEditingController();
+    final userName = TextEditingController();
+    final adress = TextEditingController();
+    final price = TextEditingController();
+    List<XFile> images = [];
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('AppProductPage'),
@@ -23,63 +34,74 @@ class AppProductPage extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         children: [
           CustomTextField(
-            controller: _title,
+            controller: title,
             hintText: 'Title',
           ),
           const SizedBox(height: 12),
           CustomTextField(
-            controller: _desc,
+            controller: desc,
+            maxLines: 4,
             hintText: 'Descroption',
           ),
           const SizedBox(height: 12),
+          ImageContainer(
+            images: images,
+            onPicked: (value) => images = value,
+            onDelete: (xfile) => images.remove(xfile),
+          ),
+          const SizedBox(height: 12),
           CustomTextField(
-            controller: _datetime,
+            controller: dateTime,
             hintText: 'DateTime',
             focusNode: FocusNode(),
             onTap: () async {
-              showCupertinoModalPopup(
-                  context: context,
-                  builder: (BuildContext builder) {
-                    return Container(
-                      height:
-                          MediaQuery.of(context).copyWith().size.height * 0.25,
-                      color: Colors.white,
-                      child: CupertinoDatePicker(
-                        mode: CupertinoDatePickerMode.date,
-                        onDateTimeChanged: (value) {
-                          _datetime.text = value.toString();
-                        },
-                        initialDateTime: DateTime.now(),
-                        minimumYear: 2000,
-                        maximumYear: 3000,
-                      ),
-                    );
-                  });
+              await DateTimeService.showDateTimePicker(
+                  context,
+                  (value) =>
+                      dateTime.text = DateFormat("d MMM , y").format(value)
+                  // (value) => dateTime.text = value.toString(),
+                  );
             },
           ),
           const SizedBox(height: 12),
           CustomTextField(
-            controller: _phone,
+            controller: phone,
             hintText: 'Phone Number',
           ),
           const SizedBox(height: 12),
           CustomTextField(
-            controller: _userName,
+            controller: userName,
             hintText: 'User Name',
           ),
           const SizedBox(height: 12),
           CustomTextField(
-            controller: _adress,
+            controller: adress,
             hintText: 'Adress',
           ),
           const SizedBox(height: 12),
           CustomTextField(
-            controller: _price,
+            controller: price,
             hintText: 'Price',
           ),
           const SizedBox(height: 12),
           ElevatedButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              LoadingService().showLoading(context);
+              final urls = await StorageService().uploadImage(images);
+              final product = Product(
+                title: title.text,
+                description: desc.text,
+                dateTime: dateTime.text,
+                phoneNumber: phone.text,
+                userName: userName.text,
+                adress: adress.text,
+                images: urls,
+                pricers: price.text,
+              );
+              await StoreService().saveProduct(product);
+              // ignore: use_build_context_synchronously
+              Navigator.popUntil(context, (route) => route.isFirst);
+            },
             icon: const Icon(Icons.publish),
             label: const Text('Add to fireStore'),
           ),
